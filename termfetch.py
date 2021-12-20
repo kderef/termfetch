@@ -28,6 +28,7 @@ except ImportError:
 
 root = PyCUI(5, 5)
 
+# constants
 VERSION = "1.0.1"
 AUTHOR  = "Kian Heitkamp"
 IP4_URL = "https://api.ipify.org"
@@ -36,10 +37,15 @@ STATUS_BAR_MESSAGE = "press Q to exit | escape to dismiss popups | developer : {
 
 class Disk:
     def capacity() -> float:
+        '''
+        get total disk capacity in GB
+        method: wmic
+        if fails, returns 0
+        '''
         try:
             ch = Popen(
                 [
-                    "powershell.exe", "-command", "wmic", "logicaldisk", "get", "size"
+                    "wmic", "logicaldisk", "get", "size"
                 ],
                 stdout=PIPE,
                 stderr=STDOUT
@@ -51,6 +57,11 @@ class Disk:
             return int(ch.stdout.readlines()[1].decode()) / 1024 ** 3
     
     def free() -> float:
+        '''
+        get free disk space
+        method: wmic
+        if fails, returns 0
+        '''
         try:
             ch = Popen(
                 [
@@ -66,6 +77,12 @@ class Disk:
             return int(ch.stdout.readlines()[1].decode()) / 1024 ** 3
     
     def used() -> float:
+        '''
+        get used disk space
+        method: capacity - free = used
+        if fails, returns 0
+        TODO find a more efficient method
+        '''
         cap = Disk.capacity()
         free = Disk.free()
 
@@ -78,6 +95,10 @@ class Disk:
 
 class Hardware:
     def cpu() -> str:
+        '''
+        get the cpu name using WMIC
+        if fails, returns "unknown"
+        '''
         try:
             ch = Popen(["wmic", "cpu", "get", "name"], stdout=PIPE, stderr=STDOUT)
         except CalledProcessError:
@@ -87,6 +108,10 @@ class Hardware:
             return ch.stdout.readlines()[1].decode().strip()
 
     def ram() -> int:
+        '''
+        get the system ram using powershell (in GB)
+        if fails, returns 0
+        '''
         try:
             ch = Popen(
                 [
@@ -104,11 +129,20 @@ class Hardware:
             return int(ch.stdout.read().decode().strip())
     
     def cpu_cores() -> int:
+        '''
+        get the number of cpu cores.
+        method: get environment variable "NUMBER_OF_PROCESSORS" and divide by 2
+        '''
         return round(int(getenv("NUMBER_OF_PROCESSORS"))/2)
 
 
 class OS:
+    '''container class for functions to get system information'''
     def name() -> str:
+        '''
+        get the name of the windows version (eg. Microsoft Windows 11 home)
+        if fails, returns "unknown"
+        '''
         try:
             ch = Popen(
             [
@@ -125,14 +159,28 @@ class OS:
             return ch.stdout.read().decode().strip()
 
     def username() -> str:
+        '''
+        gets the name of the user
+        method: get from environment variable
+        '''
         return getenv("USERNAME")
 
     def hostname() -> str:
+        '''
+        gets the hostname of the computer
+        method: get from environment variable
+        '''
         return getenv("COMPUTERNAME")
 
 
 class Private:
+    '''container class for ip4 and ip6 functions'''
     def ip4() -> tuple:
+        '''
+        function to get internal/private IPv4 address
+        method: powershell (Test-Connection)
+        if fails, returns "not detectable"
+        '''
         try:
             ch = Popen(
                 [
@@ -145,7 +193,7 @@ class Private:
             )
         except CalledProcessError:
             root.show_error_popup("error occurred", "failed to get internal IPv4.")
-            return "0.0.0.0"
+            return "not detectable"
         else:
             ip4 = ch.stdout.read().decode().strip()
             return (
@@ -154,6 +202,11 @@ class Private:
             )
 
     def ip6() -> str:
+        '''
+        function to get internal/private IPv6 address
+        method: powershell (Test-Connection)
+        if fails, returns "not detectable"
+        '''
         try:
             ch = Popen(
                 [
@@ -166,13 +219,15 @@ class Private:
             )
         except CalledProcessError:
             root.show_error_popup("error occurred", "failed to get internal IPv6.")
-            return "0.0.0.0"
+            return "not detectable"
         else:
             return ch.stdout.read().decode().strip()
 
 
 class Public:
+    '''container class for ip4 and ip6 functions'''
     def ip4() -> str:
+        '''get the public/external IPv4 address with a GET request'''
         try:
            ip4 = get(IP4_URL).text
         except:
@@ -180,11 +235,12 @@ class Public:
                 ip4 = get(IP4_URL, verify=False).text
             except Exception as e:
                 root.show_error_popup("error occurred", f"could not get external ip4 due to error: \"{e}\"")
-                ip4 = "0.0.0.0"
+                ip4 = "not detectable"
         finally:
             return ip4
 
     def ip6() -> str:
+        '''get the public/external IPv6 address with a GET request'''
         try:
            ip6 = get(IP6_URL).text
         except:
@@ -192,12 +248,15 @@ class Public:
                 ip6 = get(IP6_URL, verify=False).text
             except Exception as e:
                 root.show_error_popup("error occurred", f"could not get external ip6 due to error: \"{e}\"")
-                ip6 = "0.0.0.0"
+                ip6 = "not detectable"
         finally:
             return ip6
 
 
 def getsubnetmask(ip4) -> str:
+    '''
+    function to get the subnet mask (eg. 255.255.255.0) from the IPv4
+    '''
     ip = int(ip4.split(".")[0])
     if ip <= 223 and ip >= 192:
         return "255.255.255.0"
@@ -208,6 +267,10 @@ def getsubnetmask(ip4) -> str:
 
 
 def ip4_show_int():
+    '''
+    function to show internal IPv4 address using PyCUI.show_message_popup()
+    NOTE: _show() runs in a thread
+    '''
     def _show():
         ipv4 = Private.ip4()
         root.stop_loading_popup()
@@ -218,6 +281,10 @@ def ip4_show_int():
     t.start()
 
 def ip6_show_int():
+    '''
+    function to show internal IPv6 address using PyCUI.show_message_popup()
+    NOTE: _show() runs in a thread
+    '''
     def _show():
         ipv6 = Private.ip6()
         root.stop_loading_popup()
@@ -226,6 +293,10 @@ def ip6_show_int():
     t = Thread(target=_show)
     t.start()
 def ip4_show_ext():
+    '''
+    function to show external IPv4 address using PyCUI.show_message_popup()
+    NOTE: _show() runs in a thread
+    '''
     def _show():
         ipv4 = Public.ip4()
         root.stop_loading_popup()
@@ -234,6 +305,10 @@ def ip4_show_ext():
     t = Thread(target=_show)
     t.start()
 def ip6_show_ext():
+    '''
+    function to show external IPv6 address using PyCUI.show_message_popup()
+    NOTE: _show() runs in a thread
+    '''
     def _show():
         ipv6 = Public.ip6()
         root.stop_loading_popup()
@@ -243,7 +318,14 @@ def ip6_show_ext():
     t.start()
 
 def show_hardware_info():
+    '''
+    NOTE: this function starts a thread to fetch_info()
+    '''
     def fetch_info():
+        '''
+        fetch hardware info from functions
+        NOTE: this functions runs in a thread
+        '''
         cpu = Hardware.cpu()
 
         cores = Hardware.cpu_cores()
@@ -278,13 +360,19 @@ def show_hardware_info():
             )
         disk_info.set_selectable(False)
         root.stop_loading_popup()
-
+    
     root.show_loading_icon_popup("please wait", "loading hardware info")
     t = Thread(target=fetch_info)
     t.start()
 
 def run_speedtest():
+    '''
+    NOTE: this functions starts a thread to _run()
+    '''
     def _run():
+        '''
+        NOTE: this function runs in a thread
+        '''
         sp = Speedtest()
         download = round(sp.download() / 1000000, 2)
         upload = round(sp.upload() / 1000000, 2)
@@ -297,6 +385,9 @@ def run_speedtest():
 
 
 def main():
+    '''
+    main function, Widgets are created here
+    '''
     root.toggle_unicode_borders()
     system("title TermFetch")
     root.set_status_bar_text(
@@ -332,7 +423,7 @@ def main():
     )
     btn_speedtest.set_color(2)
 
-    root.start()
+    root.start() #NOTE DO NOT REMOVE
 
 
 if __name__ == "__main__":
