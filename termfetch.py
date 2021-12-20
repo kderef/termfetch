@@ -26,15 +26,13 @@ except ImportError:
     install("subprocess")
     from subprocess import Popen, CalledProcessError, PIPE, STDOUT
 
-
-__version__ = "1.0.0"
-__author__  = "Kian Heitkamp"
-
 root = PyCUI(5, 5)
 
+VERSION = "1.0.1"
+AUTHOR  = "Kian Heitkamp"
 IP4_URL = "https://api.ipify.org"
 IP6_URL = "https://api6.ipify.org"
-STATUS_BAR_MESSAGE = "press Q to exit | escape to dismiss popups | developer : {} | version : {}".format(__author__, __version__)
+STATUS_BAR_MESSAGE = "press Q to exit | escape to dismiss popups | developer : {} | version : {}".format(AUTHOR, VERSION)
 
 class Disk:
     def capacity() -> float:
