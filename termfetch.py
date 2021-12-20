@@ -3,7 +3,7 @@ from threading import Thread
 from os import getenv, system
 
 def install(package_name: str):
-    system("pip install "+package_name)
+    system("python -m pip install "+package_name)
 
 try:
     from py_cui import PyCUI
