@@ -256,7 +256,7 @@ def show_hardware_info():
 
         hostname = OS.hostname()
 
-        arc = architecture()[0]
+        arc = architecture("cmd.exe")[0]
 
         os = OS.name()
 
